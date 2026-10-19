@@ -1,0 +1,79 @@
+#!/bin/sh
+# Starts qBittorrent as linuxserver's service script does when it runs as a non-root user, without
+# s6 (which wants a /run owned by its own user), after holding the settings the estate manages in
+# its config, and keeps its listen port on the port the VPN provider forwards.
+set -eu
+umask 002
+# The image points TMPDIR below /run, which the read-only root does not hold; /tmp is writable.
+export TMPDIR=/tmp
+
+conf_dir=/config/qBittorrent
+conf=$conf_dir/qBittorrent.conf
+mkdir -p "$conf_dir"
+[ -f "$conf" ] || printf '[Preferences]\n' > "$conf"
+
+# The keys the estate holds, every start: the WebUI trusts loopback (the port watcher below) and
+# leaves CSRF to the SSO in front of it; the session seeds from /media/Seeding and completes into
+# /media/Completed, with no DHT, PeX or LSD.
+managed='^(WebUI\\?(AuthSubnetWhitelist(Enabled)?|CSRFProtection)|Session\\?((DHT|PeX|LSD)Enabled|TempPath(Enabled)?|DefaultSavePath|UseRandomPort|QueueingSystemEnabled|MaxUploads(PerTorrent)?|MaxConnections(PerTorrent)?|Encryption|BTProtocol))='
+grep -v -E "$managed" "$conf" > "$conf.tmp" || true
+grep -qF '[Preferences]' "$conf.tmp" || printf '[Preferences]\n' >> "$conf.tmp"
+grep -qF '[BitTorrent]' "$conf.tmp" || printf '[BitTorrent]\n' >> "$conf.tmp"
+awk '
+  /^\[Preferences\]$/ && !pref {
+    print
+    print "WebUI\\AuthSubnetWhitelistEnabled=true"
+    print "WebUI\\AuthSubnetWhitelist=127.0.0.0/8, ::1/128"
+    print "WebUI\\CSRFProtection=false"
+    pref = 1
+    next
+  }
+  /^\[BitTorrent\]$/ && !bt {
+    print
+    print "Session\\DHTEnabled=false"
+    print "Session\\PeXEnabled=false"
+    print "Session\\LSDEnabled=false"
+    print "Session\\TempPathEnabled=true"
+    print "Session\\TempPath=/media/Seeding"
+    print "Session\\DefaultSavePath=/media/Completed"
+    print "Session\\UseRandomPort=false"
+    print "Session\\QueueingSystemEnabled=false"
+    print "Session\\MaxUploads=40"
+    print "Session\\MaxUploadsPerTorrent=8"
+    print "Session\\MaxConnections=500"
+    print "Session\\MaxConnectionsPerTorrent=100"
+    print "Session\\Encryption=0"
+    print "Session\\BTProtocol=Both"
+    bt = 1
+    next
+  }
+  { print }
+' "$conf.tmp" > "$conf"
+rm -f "$conf.tmp"
+# No program runs on completion: the arr apps import what lands in /media/Completed.
+awk '
+  /^\[AutoRun\]$/ { print; ar = 1; print "enabled=false"; next }
+  /^\[/ { ar = 0 }
+  ar && /^(enabled|program)=/ { next }
+  { print }
+' "$conf" > "$conf.ar" && mv "$conf.ar" "$conf"
+chmod 600 "$conf"
+
+# The VPN rewrites this file whenever the provider moves the forwarded port; the WebUI takes the
+# new listen port live, without a restart. It starts after the WebUI does, and retries until set.
+(
+  forwarded=/run/vpn/forwarded-port
+  applied=""
+  while :; do
+    port=$(cat "$forwarded" 2>/dev/null || true)
+    if [ -n "$port" ] && [ "$port" != "$applied" ] &&
+      curl -fsS -m 5 --data-urlencode "json={\"listen_port\":$port}" \
+        http://127.0.0.1:8080/api/v2/app/setPreferences >/dev/null 2>&1; then
+      applied=$port
+      echo "qbittorrent-start: listening for peers on the forwarded port $port"
+    fi
+    sleep 15
+  done
+) &
+
+exec /app/qbittorrent-nox --webui-port=8080

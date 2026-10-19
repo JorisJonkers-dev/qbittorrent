@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>JorisJonkers-dev/renovate-config"],
+  "packageRules": [
+    {
+      "description": "linuxserver tags qBittorrent x.y.z_vL-lsN: qBittorrent's version, libtorrent's, and linuxserver's rebuild.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/qbittorrent"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)_v(?<compatibility>[0-9.]+)-ls(?<build>\\d+)$"
+    },
+    {
+      "description": "A qBittorrent minor or patch release, or a linuxserver rebuild, merges once Pipeline Complete passes; a new qBittorrent version is released, and a rebuild ships with the next one.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/qbittorrent"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "semanticCommitType": "feat",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "A major release waits for approval on the Dependency Dashboard.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/qbittorrent"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "A digest moved under the same tag is no new version, so it cannot be released.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["linuxserver/qbittorrent"],
+      "matchUpdateTypes": ["digest"],
+      "enabled": false
+    }
+  ]
+}

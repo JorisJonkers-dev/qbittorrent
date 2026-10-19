@@ -1,0 +1,121 @@
+# Publish: the image, then the Intent Fragment the estate composes. release.yml calls it with the
+# version it just released; a tag pushed by hand or a dispatch starts it too.
+#
+# push of a v*.*.* tag (authored by release.yml via the App token) drives:
+#   publish-qbittorrent -> resolve-image-lock -> fragment
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (vX.Y.Z)
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to publish (vX.Y.Z)
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  publish-qbittorrent:
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    with:
+      image-name: qbittorrent
+      version: ${{ inputs.tag || github.ref_name }}
+      context: qbittorrent
+      dockerfile: qbittorrent/Dockerfile
+      platforms: linux/amd64,linux/arm64
+    permissions:
+      contents: read
+      packages: write
+
+  # The images lock: each pushed digest, under the alias the project file names, with the
+  # user the image runs as, read from what was pushed.
+  resolve-image-lock:
+    needs: [publish-qbittorrent]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      images-lock-artifact: images-lock-${{ github.run_id }}
+      source-sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      # The commit the release was cut from, so the fragment names it however publish was started.
+      - name: source-commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: lock-images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          {
+            echo 'apiVersion: lock.jorisjonkers.dev/v1'
+            echo 'kind: ImagesLock'
+            echo 'schemaVersion: 1.0.0'
+            echo 'name: qbittorrent'
+            echo 'images:'
+          } > images.lock.yml
+          lock() {
+            alias="$1" image="$2" digest="$3"
+            case "$digest" in
+              sha256:*) ;;
+              *) echo "::error::no digest for ${image}"; exit 1 ;;
+            esac
+            user="$(docker buildx imagetools inspect "${image}@${digest}" --format '{{ json .Image }}' \
+              | jq -r 'if has("linux/amd64") then .["linux/amd64"] else . end | .config.User')"
+            case "$user" in
+              *[!0-9:]*|"") echo "::error::${alias} runs as '${user}', not a numeric uid[:gid]"; exit 1 ;;
+            esac
+            {
+              echo "  ${alias}:"
+              echo "    repository: ${image}"
+              echo "    digest: \"${digest}\""
+              echo "    uid: ${user%%:*}"
+              echo "    gid: ${user##*:}"
+            } >> images.lock.yml
+          }
+          qbittorrent=ghcr.io/jorisjonkers-dev/qbittorrent
+          lock qbittorrent "$qbittorrent" \
+            "$(docker buildx imagetools inspect "${qbittorrent}:${TAG}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          cat images.lock.yml >> "$GITHUB_STEP_SUMMARY"
+
+      - name: upload-image-lock
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: images-lock-${{ github.run_id }}
+          path: images.lock.yml
+          retention-days: 1
+
+  fragment:
+    needs: [resolve-image-lock]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    with:
+      project-file: deploy/qbittorrent.project.yml
+      version: ${{ inputs.tag || github.ref_name }}
+      ref: ${{ needs.resolve-image-lock.outputs.source-sha }}
+      validate-with: deploy/env
+      images-lock-artifact: ${{ needs.resolve-image-lock.outputs.images-lock-artifact }}
+    secrets:
+      ESTATE_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.ESTATE_DISPATCH_APP_PRIVATE_KEY }}
