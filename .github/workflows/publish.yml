@@ -26,7 +26,7 @@ permissions: {}
 
 jobs:
   publish-qbittorrent:
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@9fdac30685ba17f7cda3975178a1ad4025fe6b79 # v0.32.1
     with:
       image-name: qbittorrent
       version: ${{ inputs.tag || github.ref_name }}
@@ -98,7 +98,7 @@ jobs:
           cat images.lock.yml >> "$GITHUB_STEP_SUMMARY"
 
       - name: upload-image-lock
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: images-lock-${{ github.run_id }}
           path: images.lock.yml
@@ -110,7 +110,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@9fdac30685ba17f7cda3975178a1ad4025fe6b79 # v0.32.1
     with:
       project-file: deploy/qbittorrent.project.yml
       version: ${{ inputs.tag || github.ref_name }}
