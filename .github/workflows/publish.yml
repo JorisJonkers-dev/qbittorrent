@@ -69,7 +69,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@79e57122f7ed1fb442c90a7487f861c5d1465ec6 # v0.34.0
     with:
       project-file: deploy/qbittorrent.project.yml
       version: ${{ inputs.tag || github.ref_name }}
