@@ -1,5 +1,5 @@
-# Publish: the image, then the Intent Fragment the estate composes. release.yml calls it with the
-# version it just released; a tag pushed by hand or a dispatch starts it too.
+# Publish: the image, then the Intent Fragment the estate composes. The tag release-please creates
+# starts it; a tag pushed by hand or a dispatch starts it too.
 #
 # push of a v*.*.* tag (authored by release.yml via the App token) drives:
 #   publish-qbittorrent -> resolve-image-lock -> fragment
@@ -15,18 +15,12 @@ on:
         description: Release tag to publish (vX.Y.Z)
         required: true
         type: string
-  workflow_call:
-    inputs:
-      tag:
-        description: Release tag to publish (vX.Y.Z)
-        required: true
-        type: string
 
 permissions: {}
 
 jobs:
   publish-qbittorrent:
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@18b79f16daa07a23247fb47d69826c901155567b # v0.32.0
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@870429202376dac2e9434746941c54f9a2be605f # v0.33.0
     with:
       image-name: qbittorrent
       version: ${{ inputs.tag || github.ref_name }}
@@ -47,7 +41,7 @@ jobs:
       contents: read
       packages: read
     outputs:
-      images-lock-artifact: images-lock-${{ github.run_id }}
+      images-lock-artifact: ${{ steps.lock.outputs.images-lock-artifact }}
       source-sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,50 +53,15 @@ jobs:
         id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # The shared step also reads back the software version each image ships.
       - name: lock-images
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || github.ref_name }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          {
-            echo 'apiVersion: lock.jorisjonkers.dev/v1'
-            echo 'kind: ImagesLock'
-            echo 'schemaVersion: 1.0.0'
-            echo 'name: qbittorrent'
-            echo 'images:'
-          } > images.lock.yml
-          lock() {
-            alias="$1" image="$2" digest="$3"
-            case "$digest" in
-              sha256:*) ;;
-              *) echo "::error::no digest for ${image}"; exit 1 ;;
-            esac
-            user="$(docker buildx imagetools inspect "${image}@${digest}" --format '{{ json .Image }}' \
-              | jq -r 'if has("linux/amd64") then .["linux/amd64"] else . end | .config.User')"
-            case "$user" in
-              *[!0-9:]*|"") echo "::error::${alias} runs as '${user}', not a numeric uid[:gid]"; exit 1 ;;
-            esac
-            {
-              echo "  ${alias}:"
-              echo "    repository: ${image}"
-              echo "    digest: \"${digest}\""
-              echo "    uid: ${user%%:*}"
-              echo "    gid: ${user##*:}"
-            } >> images.lock.yml
-          }
-          qbittorrent=ghcr.io/jorisjonkers-dev/qbittorrent
-          lock qbittorrent "$qbittorrent" \
-            "$(docker buildx imagetools inspect "${qbittorrent}:${TAG}" --format '{{json .Manifest}}' | jq -r '.digest')"
-          cat images.lock.yml >> "$GITHUB_STEP_SUMMARY"
-
-      - name: upload-image-lock
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: lock
+        uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@870429202376dac2e9434746941c54f9a2be605f # v0.33.0
         with:
-          name: images-lock-${{ github.run_id }}
-          path: images.lock.yml
-          retention-days: 1
+          name: qbittorrent
+          images: |
+            qbittorrent
+          tag: ${{ inputs.tag || github.ref_name }}
 
   fragment:
     needs: [resolve-image-lock]

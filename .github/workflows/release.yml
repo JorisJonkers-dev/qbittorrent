@@ -1,63 +1,43 @@
-# The repository's version is qBittorrent's own. A merge to main that changes the qbittorrent/Dockerfile
-# FROM tag releases that version: it tags and releases v<version>, then publishes the image and the
-# Intent Fragment. A version already released publishes nothing, so a change that keeps the FROM
-# tag ships with the next qBittorrent release.
+# Tag -> release flow (org standard).
+#
+# release-please maintains a release PR that accumulates conventional commits and, when merged,
+# creates a vX.Y.Z tag and GitHub Release. The version counts this repository's own changes; the
+# qbittorrent version the image ships is the images lock's `version` (JorisJonkers-dev/workspace#140).
+#
+# The tag starts publish.yml, which builds the image and publishes the Intent Fragment. It is
+# created with the App token, because a tag pushed with GITHUB_TOKEN would not start a workflow.
 name: Release
 
 on:
   push:
     branches: [main]
-    paths: [qbittorrent/Dockerfile]
-  workflow_dispatch:
 
-concurrency:
-  group: release
-  cancel-in-progress: false
-
-permissions: {}
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  tag:
+  release-please:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    outputs:
-      tag: ${{ steps.version.outputs.tag }}
-      created: ${{ steps.release.outputs.created }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - name: Read qBittorrent's version from the FROM line
-        id: version
-        run: |
-          version=$(sed -n 's|^FROM linuxserver/qbittorrent:\([0-9]*\.[0-9]*\.[0-9]*\)_v[0-9.]*-ls[0-9]*@sha256:[0-9a-f]\{64\}$|\1|p' qbittorrent/Dockerfile)
-          [ -n "$version" ] || { echo "::error::qbittorrent/Dockerfile names no linuxserver/qbittorrent:x.y.z_vL-lsN@sha256 image"; exit 1; }
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
-
-      - name: Release the version once
-        id: release
+      - name: assert-token-minted
+        # Fail loudly if the App token is missing; never fall back to GITHUB_TOKEN.
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "$TAG is already released; nothing to publish"
-            echo "created=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ -z "$APP_TOKEN" ]; then
+            echo "E_APP_TOKEN_MISSING: Release App token was not minted." >&2
+            exit 1
           fi
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" \
-            --notes "qBittorrent ${TAG#v}, hardened for the estate path. Upstream notes: https://www.qbittorrent.org/news"
-          echo "created=true" >> "$GITHUB_OUTPUT"
 
-  publish:
-    needs: [tag]
-    if: needs.tag.outputs.created == 'true'
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      tag: ${{ needs.tag.outputs.tag }}
-    secrets: inherit
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

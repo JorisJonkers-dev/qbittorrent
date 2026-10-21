@@ -32,13 +32,15 @@ bit, and starts `qbittorrent-nox` directly rather than through s6, which wants a
 
 ## Versions
 
-This repository's version is qBittorrent's: release `v5.2.3` runs qBittorrent
-5.2.3. Renovate opens a pull request for each update. A minor or patch update
-merges itself once `Pipeline Complete` passes; a major release waits for
-approval on the Dependency Dashboard. A linuxserver rebuild of the same
-qBittorrent ships with the next release. When the `FROM` tag in
-`qbittorrent/Dockerfile` names a new version on `main`, `release.yml` releases
-it and publishes the image and the Intent Fragment.
+This repository releases its own semver, continuing from `v5.2.3`, the last tag
+named after qBittorrent. The qBittorrent version the image ships is recorded
+separately, as the images lock's `version` (JorisJonkers-dev/workspace#140), so
+a fix to our configuration no longer waits for a qBittorrent release. Renovate
+opens a pull request for each update, as a `fix`, so release-please releases
+it. A minor or patch update merges itself once `Pipeline Complete` passes; a
+major release waits for approval on the Dependency Dashboard. Merging release-
+please's pull request tags `vX.Y.Z`, which publishes the image and the Intent
+Fragment.
 
 `scripts/smoke-test.sh` starts the image restricted, waits until it serves, and
 checks it takes a forwarded port; CI runs it on every change.
