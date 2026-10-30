@@ -15,6 +15,19 @@ owner: joris
 
 applications:
   - id: qbittorrent
+    exposure:
+      # In public, behind the platform's sign-in.
+      - name: public
+        host: qbittorrent.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: qbittorrent, surface: http }
+      # On the LAN, with no sign-in.
+      - name: lan
+        host: qbittorrent.jorisjonkers.dev
+        audience: lan
+        routes:
+          - { path: /, match: prefix, process: qbittorrent, surface: http }
     processes:
       - name: qbittorrent
         lifecycle: application
