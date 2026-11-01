@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.4.0](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.3.1...v5.4.0) (2026-10-30)
+
+
+### Features
+
+* declare its public and LAN exposures, so the estate edge renders their routes ([#13](https://github.com/JorisJonkers-dev/qbittorrent/issues/13)) ([cf43d01](https://github.com/JorisJonkers-dev/qbittorrent/commit/cf43d015a51facd18e52c1121b68e3cf1cfc9c01))
+
 ## [5.3.1](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.3.0...v5.3.1) (2026-10-21)
 
 
