@@ -22,6 +22,7 @@ jobs:
   publish-qbittorrent:
     uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@f8f0a5ae583913de18143bbbbe0db9ecab970435 # v0.45.0
     with:
+      require-package-proxy: true
       image-name: qbittorrent
       version: ${{ inputs.tag || github.ref_name }}
       context: qbittorrent
@@ -73,6 +74,7 @@ jobs:
       id-token: write
     uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@f8f0a5ae583913de18143bbbbe0db9ecab970435 # v0.45.0
     with:
+      require-package-proxy: true
       project-file: deploy/qbittorrent.project.yml
       version: ${{ inputs.tag || github.ref_name }}
       ref: ${{ needs.resolve-image-lock.outputs.source-sha }}
