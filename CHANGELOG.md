@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.4.1](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.4.0...v5.4.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **hygiene:** never cancel a run of the required hygiene checks ([#21](https://github.com/JorisJonkers-dev/qbittorrent/issues/21)) ([557cc14](https://github.com/JorisJonkers-dev/qbittorrent/commit/557cc140c707e9aa412fa8a76ba8a0f7e6aeb26f))
+
 ## [5.4.0](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.3.1...v5.4.0) (2026-10-30)
 
 
