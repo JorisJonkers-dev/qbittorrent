@@ -1,4 +1,4 @@
-FROM linuxserver/qbittorrent:5.2.3_v2.0.14-ls474@sha256:a00b6a597a3832a1814cde0ef60abc55c94644f3f80902c3432f6af6de8d4a96
+FROM linuxserver/qbittorrent:5.2.3_v2.0.14-ls477@sha256:457e4eec2ee3f5e4ef59f237ad51f6143deba9f7445ab48bb5204a98888ef9aa
 
 # No setuid or setgid binary: the estate's pods do not yet forbid privilege escalation.
 RUN find / -xdev -perm /6000 -type f -exec chmod ug-s {} +
