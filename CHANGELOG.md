@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.0](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.4.1...v5.5.0) (2026-11-27)
+
+
+### Features
+
+* **deps:** update linuxserver/qbittorrent docker tag to v5.2.3_v2.0.14-ls477 ([#25](https://github.com/JorisJonkers-dev/qbittorrent/issues/25)) ([c9d7166](https://github.com/JorisJonkers-dev/qbittorrent/commit/c9d7166cd02776fd2cc2f9b61a576ddba092c760))
+
 ## [5.4.1](https://github.com/JorisJonkers-dev/qbittorrent/compare/v5.4.0...v5.4.1) (2026-11-12)
 
 
