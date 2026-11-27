@@ -20,7 +20,7 @@ permissions: {}
 
 jobs:
   publish-qbittorrent:
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/container-publish.yml@658bec7f448631fbaa3f28d3a2e5708390e0c4c1 # v0.51.0
     with:
       require-package-proxy: true
       image-name: qbittorrent
@@ -59,7 +59,7 @@ jobs:
       # The shared step also reads back the software version each image ships.
       - name: lock-images
         id: lock
-        uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
+        uses: JorisJonkers-dev/github-workflows/actions/resolve-image-lock@658bec7f448631fbaa3f28d3a2e5708390e0c4c1 # v0.51.0
         with:
           name: qbittorrent
           images: |
@@ -72,7 +72,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@48fcba8b143567e12716f4b77b9a3ab211719ffd # v0.50.1
+    uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@658bec7f448631fbaa3f28d3a2e5708390e0c4c1 # v0.51.0
     with:
       require-package-proxy: true
       project-file: deploy/qbittorrent.project.yml
